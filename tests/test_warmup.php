@@ -1,0 +1,51 @@
+<?php
+
+use App\Kernel;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\NullOutput;
+
+$kernel = new Kernel('test', true);
+$kernel->boot();
+$container = $kernel->getContainer();
+$application = new Application($kernel);
+$application->setAutoExit(false);
+
+$databasePath = $container->getParameter('kernel.project_dir') . '/var/test.db';
+
+if (file_exists($databasePath)) {
+    echo "// Removing test database...\n";
+    unlink($databasePath);
+}
+
+// Drop database if exists
+$application->run(new ArrayInput([
+    'command' => 'doctrine:database:drop',
+    '--env' => 'test',
+    '--force' => true,
+    '--if-exists' => true,
+]), new NullOutput());
+
+// Create database
+echo "// Recreating test database...\n";
+$application->run(new ArrayInput([
+    'command' => 'doctrine:database:create',
+    '--env' => 'test',
+]), new NullOutput());
+
+// Create schema
+echo "// Creating schema...\n";
+$application->run(new ArrayInput([
+    'command' => 'doctrine:schema:create',
+    '--env' => 'test',
+]), new NullOutput());
+
+// Load fixtures
+echo "// Loading fixtures...\n";
+$application->run(new ArrayInput([
+    'command' => 'doctrine:fixtures:load',
+    '--env' => 'test',
+    '--no-interaction' => true,
+]), new NullOutput());
+
+$kernel->shutdown();
