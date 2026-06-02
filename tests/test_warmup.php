@@ -27,18 +27,21 @@ $application->run(new ArrayInput([
 ]), new NullOutput());
 
 // Create database
+echo "// Recreating test database...\n";
 $application->run(new ArrayInput([
     'command' => 'doctrine:database:create',
     '--env' => 'test',
 ]), new NullOutput());
 
 // Create schema
+echo "// Creating schema...\n";
 $application->run(new ArrayInput([
     'command' => 'doctrine:schema:create',
     '--env' => 'test',
 ]), new NullOutput());
 
 // Load fixtures
+echo "// Loading fixtures...\n";
 $application->run(new ArrayInput([
     'command' => 'doctrine:fixtures:load',
     '--env' => 'test',
