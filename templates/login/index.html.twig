@@ -5,6 +5,30 @@
 {% block body %}
     <h1>Login</h1>
 
-    {{ form(form) }}
+    {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <form name="login" method="post">
+        <div id="login">
+            <div><label for="login__username" class="required">Username</label>
+                <input type="text" id="login__username"
+                       name="_username"
+                       required="required">
+            </div>
+            <div><label for="login__password" class="required">Password</label>
+                <input type="password" id="login__password"
+                       name="_password"
+                       required="required">
+            </div>
+            <div>
+                <button type="submit" id="login_submit" name="_submit">Submit</button>
+            </div>
+            <input type="hidden" id="login__token" name="_token"
+                     value="{{ csrf_token('authenticate') }}">
+        </div>
+    </form>
 
 {% endblock %}

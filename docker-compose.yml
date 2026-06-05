@@ -5,7 +5,14 @@ services:
     restart: unless-stopped
     volumes:
       - ./:/var/www/html
-    command: symfony server:start --port=8000  --no-tls --allow-http --allow-all-ip --dir=public
+    depends_on:
+      - db
+    command: | 
+      sh -c " 
+      bin/console doctrine:database:create --if-not-exists && 
+      bin/console doctrine:migrations:migrate --no-interaction && 
+      bin/console doctrine:fixtures:load --no-interaction && 
+      symfony server:start --port=8000  --no-tls --allow-http --allow-all-ip --dir=public"
   db:
     image: mysql:8.0
     container_name: symfony-db
@@ -15,6 +22,8 @@ services:
       MYSQL_DATABASE: symfony-test
     volumes:
       - db_data:/var/lib/mysql
+    ports:
+      - "33666:3306"
 
 volumes:
     db_data: ~
