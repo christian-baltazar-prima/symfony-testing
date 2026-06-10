@@ -27,9 +27,12 @@ final class UserController extends AbstractController
     public function new(Request $request, CreateUserAction $createUser): Response
     {
         $user = new User();
-        $form = $this->createForm(UserType::class, $user);
-        $form->handleRequest($request);
+        $form = $this->createForm(UserType::class, $user, [
+            'withPassword' => true,
+        ]);
 
+        $form->handleRequest($request);
+        
         if ($form->isSubmitted() && $form->isValid()) {
             $createUser($form);
 

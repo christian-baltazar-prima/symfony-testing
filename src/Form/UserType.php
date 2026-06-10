@@ -14,14 +14,18 @@ class UserType extends AbstractType
     {
         $builder
             ->add('email')
-            ->add('name')
-            ->add('password', PasswordType::class);
+            ->add('name');
+
+        if ($options['withPassword']) {
+            $builder->add('password', PasswordType::class);
+        }
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
             'data_class' => User::class,
+            'withPassword' => false,
         ]);
     }
 }
