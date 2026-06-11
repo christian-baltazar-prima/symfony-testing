@@ -6,7 +6,6 @@ namespace App\Service\User;
 
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\Form\FormInterface;
 
 readonly class CreateUserAction
 {
@@ -15,13 +14,8 @@ readonly class CreateUserAction
         private EntityManagerInterface $entityManager,
     ) {}
 
-    public function __invoke(FormInterface $form): void
+    public function __invoke(User $user): void
     {
-        $user = $form->getData();
-        if (!$user instanceof User) {
-            throw new \LogicException('Form data must be an instance of User');
-        }
-
         $user->setPassword(($this->userPassword)($user, $user->getPassword()));
 
         $this->entityManager->persist($user);

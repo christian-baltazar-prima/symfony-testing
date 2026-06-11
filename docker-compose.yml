@@ -1,7 +1,7 @@
 services:
   app:
     build: .
-    container_name: symfony-testing
+    container_name: symfony-app
     restart: unless-stopped
     volumes:
       - ./:/var/www/html
