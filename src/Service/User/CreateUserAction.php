@@ -10,13 +10,15 @@ use Doctrine\ORM\EntityManagerInterface;
 class CreateUserAction
 {
     public function __construct(
-        private UserPasswordService $userPassword,
-        private EntityManagerInterface $entityManager,
+        private readonly UserPasswordService $userPassword,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly UserAvatarProvider $avatarProvider,
     ) {}
 
     public function __invoke(User $user): void
     {
         $user->setPassword(($this->userPassword)($user, $user->getPassword()));
+        $user->setAvatar($this->avatarProvider->getAvatarUrl($user));
 
         $this->entityManager->persist($user);
         $this->entityManager->flush();
