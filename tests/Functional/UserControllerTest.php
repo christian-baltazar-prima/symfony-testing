@@ -73,28 +73,7 @@ class UserControllerTest extends WebTestCase
     #[Test]
     public function create_new_user_e2e(): void
     {
-        $user = new User();
-        $user->setName('Admin');
-        $user->setEmail('admin@test.com');
-        $user->setPassword('123456');
-
-        $this->entityManager->persist($user);
-        $this->entityManager->flush();
-
-        $this->client->loginUser($user);
-        $this->client->request('GET', '/user/new');
-
-        self::assertResponseIsSuccessful();
-
-        $this->client->submitForm('Save', [
-            'user' => [
-                'name' => 'Test',
-                'email' => 'test@test.com',
-                'password' => '12345x',
-            ],
-        ]);
-
-        self::assertResponseRedirects('/user');
+        $this->create_new_user_action();
 
         $this->client->followRedirect();
 
