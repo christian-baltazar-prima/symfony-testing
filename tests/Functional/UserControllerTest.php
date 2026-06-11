@@ -6,7 +6,6 @@ namespace App\Tests\Functional;
 
 use App\Entity\User;
 use App\Tests\DatabaseTester;
-use App\Tests\SessionTester;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
