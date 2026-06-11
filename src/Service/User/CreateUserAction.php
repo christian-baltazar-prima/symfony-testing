@@ -7,7 +7,7 @@ namespace App\Service\User;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 
-readonly class CreateUserAction
+class CreateUserAction
 {
     public function __construct(
         private UserPasswordService $userPassword,

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Tests\Service\User;
+namespace App\Tests\Unit;
 
 use App\Entity\User;
 use App\Service\User\UserPasswordService;
@@ -11,7 +11,7 @@ use Prophecy\Argument;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
-class UserPasswordTest extends TestCase
+class UserPasswordServiceTest extends TestCase
 {
     use ProphecyTrait;
 
@@ -59,7 +59,7 @@ class UserPasswordTest extends TestCase
     public static function provide_user_password_error(): array
     {
         return [
-            ['test@mail.com', '123'],
+            ['test@mail.com', 'ab123'],
             ['test@mail.com', '123456'],
             ['test@mail.com', 'test123'],
             ['test@mail.com', 'qwerty'],
