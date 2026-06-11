@@ -42,4 +42,22 @@ class CreateUserActionTest extends KernelTestCase
         $repo = self::getContainer()->get(UserRepository::class);
         $this->assertCount(1, $repo->findAll());
     }
+
+    #[Test]
+    public function user_created_error(): void
+    {
+        $user = new User();
+        $user->setName('test');
+        $user->setEmail('test@test.com');
+        $user->setPassword('test');
+
+        $test = self::getContainer()->get(CreateUserAction::class);
+
+        $this->expectException(\LogicException::class);
+
+        $test($user);
+
+        $repo = self::getContainer()->get(UserRepository::class);
+        $this->assertCount(0, $repo->findAll());
+    }
 }
