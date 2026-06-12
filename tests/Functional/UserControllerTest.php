@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\User;
+use App\Service\User\UserAvatarProvider;
 use App\Tests\DatabaseTester;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Prophecy\Argument;
+use Prophecy\PhpUnit\ProphecyTrait;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class UserControllerTest extends WebTestCase
 {
-    use DatabaseTester;
+    use ProphecyTrait, DatabaseTester;
 
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
@@ -84,5 +87,27 @@ class UserControllerTest extends WebTestCase
 
         $userRows = $crawler->filter('table.table tbody tr');
         self::assertCount(2, $userRows);
+    }
+
+    #[Test]
+    public function create_new_user_with_avatar(): void
+    {
+        $this->client->disableReboot();
+
+        $avatarProvider = $this->prophesize(UserAvatarProvider::class);
+        $avatarProvider->getAvatarUrl(Argument::any())->willReturn('http://example.com/avatar.jpg');
+        $this->client->getContainer()->set(UserAvatarProvider::class, $avatarProvider->reveal());
+
+        $this->create_new_user_action();
+
+        $this->client->followRedirect();
+
+        $crawler = $this->client->getCrawler();
+
+        $mainTitle = $crawler->filter('h1')->first()->text();
+        self::assertSame('User index', $mainTitle);
+
+        $userAvatar = $crawler->filter('img')->last()->attr('src');
+        self::assertSame('http://example.com/avatar.jpg', $userAvatar);
     }
 }
