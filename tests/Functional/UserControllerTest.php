@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\User;
+use App\Repository\UserRepository;
 use App\Tests\DatabaseTester;
 use App\Tests\SessionTester;
 use Doctrine\ORM\EntityManagerInterface;
@@ -69,5 +70,8 @@ class UserControllerTest extends WebTestCase
         ]);
 
         self::assertResponseRedirects('/user');
+
+        $repo = self::getContainer()->get(UserRepository::class);
+        self::assertCount(2, $repo->findAll());
     }
 }
