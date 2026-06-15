@@ -47,6 +47,30 @@ class UserControllerTest extends WebTestCase
     #[Test]
     public function create_new_user_action(): void
     {
+        $this->shouldCreateUserWithForm();
+
+        $repo = self::getContainer()->get(UserRepository::class);
+        self::assertCount(2, $repo->findAll());
+    }
+
+    #[Test]
+    public function create_new_user_e2e(): void
+    {
+        $this->shouldCreateUserWithForm();
+
+        $this->client->followRedirect();
+
+        $crawler = $this->client->getCrawler();
+
+        $mainTitle = $crawler->filter('h1')->first()->text();
+        self::assertSame('User index', $mainTitle);
+
+        $userRows = $crawler->filter('table.table tbody tr');
+        self::assertCount(2, $userRows);
+    }
+
+    private function shouldCreateUserWithForm(): void
+    {
         $user = new User();
         $user->setName('Admin');
         $user->setEmail('admin@test.com');
@@ -69,24 +93,5 @@ class UserControllerTest extends WebTestCase
         ]);
 
         self::assertResponseRedirects('/user');
-
-        $repo = self::getContainer()->get(UserRepository::class);
-        self::assertCount(2, $repo->findAll());
-    }
-
-    #[Test]
-    public function create_new_user_e2e(): void
-    {
-        $this->create_new_user_action();
-
-        $this->client->followRedirect();
-
-        $crawler = $this->client->getCrawler();
-
-        $mainTitle = $crawler->filter('h1')->first()->text();
-        self::assertSame('User index', $mainTitle);
-
-        $userRows = $crawler->filter('table.table tbody tr');
-        self::assertCount(2, $userRows);
     }
 }
