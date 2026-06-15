@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Entity\User;
 use App\Service\User\UserAvatarProvider;
+use App\Repository\UserRepository;
 use App\Tests\DatabaseTester;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -71,6 +72,9 @@ class UserControllerTest extends WebTestCase
         ]);
 
         self::assertResponseRedirects('/user');
+
+        $repo = self::getContainer()->get(UserRepository::class);
+        self::assertCount(2, $repo->findAll());
     }
 
     #[Test]
