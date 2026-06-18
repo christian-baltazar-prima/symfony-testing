@@ -1,0 +1,141 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Functional;
+
+use App\Entity\User;
+use App\Repository\UserRepository;
+use App\Service\User\CreateUserAction;
+use App\Service\User\UserAvatarProvider;
+use App\Tests\DatabaseTester;
+use Doctrine\ORM\EntityManagerInterface;
+use PHPUnit\Framework\Attributes\Test;
+use Prophecy\Argument;
+use Prophecy\PhpUnit\ProphecyTrait;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+
+class UserControllerTest extends WebTestCase
+{
+    use ProphecyTrait, DatabaseTester;
+
+    private KernelBrowser $client;
+    private EntityManagerInterface $entityManager;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->client = self::createClient();
+        $this->entityManager = $this->client->getContainer()->get(EntityManagerInterface::class);
+        $this->refreshDatabase();
+    }
+
+    #[Test]
+    public function render_user_index(): void
+    {
+        $user = new User();
+        $user->setName('Admin');
+        $user->setEmail('admin@test.com');
+        $user->setPassword('123456');
+
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($user);
+        $this->client->request('GET', '/user');
+
+        self::assertResponseIsSuccessful();
+    }
+
+    #[Test]
+    public function create_new_user_action(): void
+    {
+        $this->shouldCreateUserWithForm();
+
+        $repo = self::getContainer()->get(UserRepository::class);
+        self::assertCount(2, $repo->findAll());
+    }
+
+    #[Test]
+    public function create_new_user_e2e(): void
+    {
+        $this->shouldCreateUserWithForm();
+
+        $this->client->followRedirect();
+
+        $crawler = $this->client->getCrawler();
+
+        $mainTitle = $crawler->filter('h1')->first()->text();
+        self::assertSame('User index', $mainTitle);
+
+        $userRows = $crawler->filter('table.table tbody tr');
+        self::assertCount(2, $userRows);
+    }
+
+    #[Test]
+    public function create_new_user_with_avatar_default(): void
+    {
+        $this->client->disableReboot();
+
+        $this->shouldCreateUserWithForm();
+
+        $this->client->followRedirect();
+
+        $crawler = $this->client->getCrawler();
+
+        $mainTitle = $crawler->filter('h1')->first()->text();
+        self::assertSame('User index', $mainTitle);
+
+        $userAvatar = $crawler->filter('img')->last()->attr('src');
+        self::assertSame(CreateUserAction::DEFAULT_AVATAR_URL, $userAvatar);
+    }
+
+    #[Test]
+    public function create_new_user_with_avatar_custom(): void
+    {
+        $this->client->disableReboot();
+
+        $avatarProvider = $this->prophesize(UserAvatarProvider::class);
+        $avatarProvider->getAvatarUrl(Argument::any())->willReturn('http://example.com/avatar.jpg');
+        $this->client->getContainer()->set(UserAvatarProvider::class, $avatarProvider->reveal());
+
+        $this->shouldCreateUserWithForm();
+
+        $this->client->followRedirect();
+
+        $crawler = $this->client->getCrawler();
+
+        $mainTitle = $crawler->filter('h1')->first()->text();
+        self::assertSame('User index', $mainTitle);
+
+        $userAvatar = $crawler->filter('img')->last()->attr('src');
+        self::assertSame('http://example.com/avatar.jpg', $userAvatar);
+    }
+
+    private function shouldCreateUserWithForm(): void
+    {
+        $user = new User();
+        $user->setName('Admin');
+        $user->setEmail('admin@test.com');
+        $user->setPassword('123456');
+
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($user);
+        $this->client->request('GET', '/user/new');
+
+        self::assertResponseIsSuccessful();
+
+        $this->client->submitForm('Save', [
+            'user' => [
+                'name' => 'Test',
+                'email' => 'test@test.com',
+                'password' => '12345x',
+            ],
+        ]);
+
+        self::assertResponseRedirects('/user');
+    }
+}

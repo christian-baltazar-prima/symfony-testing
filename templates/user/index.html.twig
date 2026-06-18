@@ -11,6 +11,7 @@
                 <th>Id</th>
                 <th>Email</th>
                 <th>Name</th>
+                <th>Avatar</th>
                 <th>actions</th>
             </tr>
         </thead>
@@ -20,6 +21,7 @@
                 <td>{{ user.id }}</td>
                 <td>{{ user.email }}</td>
                 <td>{{ user.name }}</td>
+                <td><img src="{{ user.avatar }}" width="100" height="100" /></td>
                 <td>
                     <a href="{{ path('app_user_show', {'id': user.id}) }}">show</a>
                     <a href="{{ path('app_user_edit', {'id': user.id}) }}">edit</a>
