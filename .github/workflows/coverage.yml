@@ -39,7 +39,7 @@ jobs:
         run: mkdir -p build/logs build/coverage
 
       - name: Start services
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
 
       - name: Run tests with coverage in app container
         run: |
@@ -53,8 +53,7 @@ jobs:
               php ./vendor/bin/phpunit \
                 --configuration phpunit.dist.xml \
                 --coverage-clover build/logs/clover.xml \
-                --coverage-html build/coverage \
-                --coverage-text
+                --coverage-html build/coverage
             '
 
       - name: Stop compose services

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-readonly class FooService
+class FooService
 {
     public function __construct(private array $data) {}
 
@@ -15,5 +15,10 @@ readonly class FooService
         }
 
         return $this->data[$key] ?? [];
+    }
+
+    public function setData(string $key, mixed $value): void
+    {
+        $this->data[$key] = $value;
     }
 }
