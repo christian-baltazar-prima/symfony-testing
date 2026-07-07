@@ -6,7 +6,8 @@ services:
     volumes:
       - ./:/var/www/html
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       XDEBUG_MODE: debug,develop
       XDEBUG_CONFIG: client_host=host.docker.internal client_port=9003
@@ -23,6 +24,12 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: symfony-test
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     volumes:
       - db_data:/var/lib/mysql
     ports:
