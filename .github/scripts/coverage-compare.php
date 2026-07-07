@@ -97,13 +97,14 @@ class CoverageAnalyzer {
     }
 
     public static function getChangedFiles(string $baseBranch = 'master'): array {
+        $baseBranch = escapeshellarg($baseBranch);
         $cmd = "git diff {$baseBranch}...HEAD --name-only";
         $output = [];
         $returnCode = 0;
         exec($cmd, $output, $returnCode);
         
         if ($returnCode !== 0) {
-            throw new Exception("Failed to get changed files: git diff failed");
+            throw new Exception("Failed to get changed files for base ref " . trim($baseBranch, "'") . ": git diff failed");
         }
 
         $changedFiles = [];

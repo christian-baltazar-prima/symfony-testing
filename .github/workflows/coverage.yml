@@ -16,6 +16,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve base ref
+        id: base_ref
+        shell: bash
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            echo "base_ref=${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "base_ref=master" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch base ref
+        shell: bash
+        run: |
+          git fetch --no-tags origin \
+            "+refs/heads/${{ steps.base_ref.outputs.base_ref }}:refs/remotes/origin/${{ steps.base_ref.outputs.base_ref }}"
 
       - name: Prepare directories
         run: mkdir -p build/logs build/coverage
@@ -55,7 +73,7 @@ jobs:
         continue-on-error: true
         run: |
           if [ -f build/logs/clover.xml ]; then
-            php .github/scripts/coverage-compare.php changed build/logs/clover.xml master >> $GITHUB_OUTPUT
+            php .github/scripts/coverage-compare.php changed build/logs/clover.xml "origin/${{ steps.base_ref.outputs.base_ref }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Write job summary
