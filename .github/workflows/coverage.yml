@@ -21,16 +21,17 @@ jobs:
         run: mkdir -p build/logs build/coverage
 
       - name: Start services
-        run: docker compose -f docker-compose.yml up -d
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
 
       - name: Run tests with coverage in app container
         run: |
-          docker compose -f docker-compose.yml exec -T \
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml exec -T \
             -e APP_ENV=test \
             -e DATABASE_URL='mysql://root:root@db:3306/symfony-test?serverVersion=8.0&charset=utf8mb4' \
             -e XDEBUG_MODE=coverage \
             app sh -lc '
-              composer install --no-interaction --prefer-dist &&
+              git config --global --add safe.directory /var/www/html &&
+              COMPOSER_ALLOW_SUPERUSER=1 composer install --no-interaction --prefer-dist &&
               php ./vendor/bin/phpunit \
                 --configuration phpunit.dist.xml \
                 --coverage-clover build/logs/clover.xml \
@@ -40,7 +41,7 @@ jobs:
 
       - name: Stop compose services
         if: always()
-        run: docker compose -f docker-compose.yml down --volumes --remove-orphans
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down --volumes --remove-orphans
 
       - name: Parse coverage metrics
         id: coverage
