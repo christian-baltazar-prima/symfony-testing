@@ -47,37 +47,16 @@ jobs:
         id: coverage
         shell: bash
         run: |
-          php -r '
-            $file = "build/logs/clover.xml";
-            if (!file_exists($file)) {
-              fwrite(STDERR, "Missing Clover report at $file\n");
-              exit(1);
-            }
-            $xml = simplexml_load_file($file);
-            if ($xml === false) {
-              fwrite(STDERR, "Unable to parse Clover XML\n");
-              exit(1);
-            }
-            $metrics = $xml->xpath("/coverage/project/metrics");
-            if (!$metrics || !isset($metrics[0])) {
-              fwrite(STDERR, "Unable to find project metrics in Clover XML\n");
-              exit(1);
-            }
-            $m = $metrics[0];
-            $totalStatements = (int) $m["statements"];
-            $coveredStatements = (int) $m["coveredstatements"];
-            $totalMethods = (int) $m["methods"];
-            $coveredMethods = (int) $m["coveredmethods"];
-            $lineCoverage = $totalStatements > 0 ? round(($coveredStatements / $totalStatements) * 100, 2) : 0.0;
-            $methodCoverage = $totalMethods > 0 ? round(($coveredMethods / $totalMethods) * 100, 2) : 0.0;
-            $output = getenv("GITHUB_OUTPUT");
-            file_put_contents($output, "line_coverage={$lineCoverage}\n", FILE_APPEND);
-            file_put_contents($output, "method_coverage={$methodCoverage}\n", FILE_APPEND);
-            file_put_contents($output, "covered_lines={$coveredStatements}\n", FILE_APPEND);
-            file_put_contents($output, "total_lines={$totalStatements}\n", FILE_APPEND);
-            file_put_contents($output, "covered_methods={$coveredMethods}\n", FILE_APPEND);
-            file_put_contents($output, "total_methods={$totalMethods}\n", FILE_APPEND);
-          '
+          php .github/scripts/coverage-compare.php total build/logs/clover.xml >> $GITHUB_OUTPUT
+
+      - name: Parse changed-code coverage
+        id: coverage_changed
+        shell: bash
+        continue-on-error: true
+        run: |
+          if [ -f build/logs/clover.xml ]; then
+            php .github/scripts/coverage-compare.php changed build/logs/clover.xml master >> $GITHUB_OUTPUT
+          fi
 
       - name: Write job summary
         run: |
@@ -100,17 +79,42 @@ jobs:
         with:
           script: |
             const marker = "<!-- coverage-report-comment -->";
+             
+            // Build coverage sections
+            let sections = [];
+             
+            // Full project coverage
+            sections.push(`### Full Project Coverage
+             
+| Metric | Value |
+| --- | ---: |
+| Line coverage | ${{ steps.coverage.outputs.line_coverage }}% |
+| Covered lines | ${{ steps.coverage.outputs.covered_lines }} / ${{ steps.coverage.outputs.total_lines }} |
+| Method coverage | ${{ steps.coverage.outputs.method_coverage }}% |
+| Covered methods | ${{ steps.coverage.outputs.covered_methods }} / ${{ steps.coverage.outputs.total_methods }} |`);
+             
+            // Changed-code coverage (if available)
+            const changedLineCoverage = '${{ steps.coverage_changed.outputs.line_coverage }}';
+            if (changedLineCoverage && changedLineCoverage !== '' && !changedLineCoverage.includes('undefined')) {
+              sections.push(`### Coverage for Changed Code
+             
+| Metric | Value |
+| --- | ---: |
+| Line coverage | ${{ steps.coverage_changed.outputs.line_coverage }}% |
+| Covered lines | ${{ steps.coverage_changed.outputs.covered_lines }} / ${{ steps.coverage_changed.outputs.total_lines }} |
+| Method coverage | ${{ steps.coverage_changed.outputs.method_coverage }}% |
+| Covered methods | ${{ steps.coverage_changed.outputs.covered_methods }} / ${{ steps.coverage_changed.outputs.total_methods }} |`);
+            }
+             
+            // Add artifact note
+            sections.push(`### Artifacts
+HTML report is available in the \`coverage-html-report\` artifact from this workflow run.`);
+             
             const body = `${marker}
-            ## PHPUnit Coverage
+## PHPUnit Coverage
 
-            | Metric | Value |
-            | --- | ---: |
-            | Line coverage | ${{ steps.coverage.outputs.line_coverage }}% |
-            | Covered lines | ${{ steps.coverage.outputs.covered_lines }} / ${{ steps.coverage.outputs.total_lines }} |
-            | Method coverage | ${{ steps.coverage.outputs.method_coverage }}% |
-            | Covered methods | ${{ steps.coverage.outputs.covered_methods }} / ${{ steps.coverage.outputs.total_methods }} |
-
-            HTML report is available in the \`coverage-html-report\` artifact from this workflow run.`;
+${sections.join('\n\n')}`;
+             
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
             const comments = await github.paginate(github.rest.issues.listComments, {
