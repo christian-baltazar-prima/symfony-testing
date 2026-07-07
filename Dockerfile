@@ -5,12 +5,19 @@ RUN apt-get update && apt-get install -y \
     git \
     unzip \
     curl \
+    $PHPIZE_DEPS \
     && rm -rf /var/lib/apt/lists/*
+
+# Install and enable Xdebug
+RUN pecl install xdebug \
+    && docker-php-ext-enable xdebug
 
 RUN docker-php-ext-install pdo pdo_mysql
 
 # Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+# Config Xdebug
+COPY xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 
 # Install Symfony CLI
 RUN curl -sS https://get.symfony.com/cli/installer | bash && \
