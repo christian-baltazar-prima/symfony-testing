@@ -20,12 +20,12 @@ jobs:
       - name: Prepare directories
         run: mkdir -p build/logs build/coverage
 
-      - name: Start services
-        run: docker compose -f docker-compose.yml up -d
+      - name: Start database service
+        run: docker compose -f docker-compose.yml up -d db
 
       - name: Run tests with coverage in app container
         run: |
-          docker compose -f docker-compose.yml exec -T \
+          docker compose -f docker-compose.yml run --rm \
             -e APP_ENV=test \
             -e DATABASE_URL='mysql://root:root@db:3306/symfony-test?serverVersion=8.0&charset=utf8mb4' \
             -e XDEBUG_MODE=coverage \
