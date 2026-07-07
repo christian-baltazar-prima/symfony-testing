@@ -16,7 +16,7 @@ class FooServiceTest extends TestCase
     {
         $test = new FooService(['foo' => 'bar']);
         $this->assertEquals('bar', $test->getData('foo'));
-        $this->assertEmpty($test->getData('nonexistent'));
+        $this->assertNull($test->getData('nonexistent'));
     }
 
 }

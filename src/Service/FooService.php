@@ -8,13 +8,13 @@ class FooService
 {
     public function __construct(private array $data) {}
 
-    public function getData(?string $key = null): array
+    public function getData(?string $key = null): mixed
     {
         if ($key === null) {
             return $this->data;
         }
 
-        return $this->data[$key] ?? [];
+        return $this->data[$key] ?? null;
     }
 
     public function setData(string $key, mixed $value): void
