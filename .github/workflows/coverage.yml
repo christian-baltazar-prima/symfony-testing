@@ -1,0 +1,145 @@
+name: Test Coverage
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare directories
+        run: mkdir -p build/logs build/coverage
+
+      - name: Start services
+        run: docker compose -f docker-compose.yml up -d
+
+      - name: Run tests with coverage in app container
+        run: |
+          docker compose -f docker-compose.yml exec -T \
+            -e APP_ENV=test \
+            -e DATABASE_URL='mysql://root:root@db:3306/symfony-test?serverVersion=8.0&charset=utf8mb4' \
+            -e XDEBUG_MODE=coverage \
+            app sh -lc '
+              composer install --no-interaction --prefer-dist &&
+              php ./vendor/bin/phpunit \
+                --configuration phpunit.dist.xml \
+                --coverage-clover build/logs/clover.xml \
+                --coverage-html build/coverage \
+                --coverage-text
+            '
+
+      - name: Stop compose services
+        if: always()
+        run: docker compose -f docker-compose.yml down --volumes --remove-orphans
+
+      - name: Parse coverage metrics
+        id: coverage
+        shell: bash
+        run: |
+          php -r '
+            $file = "build/logs/clover.xml";
+            if (!file_exists($file)) {
+              fwrite(STDERR, "Missing Clover report at $file\n");
+              exit(1);
+            }
+            $xml = simplexml_load_file($file);
+            if ($xml === false) {
+              fwrite(STDERR, "Unable to parse Clover XML\n");
+              exit(1);
+            }
+            $metrics = $xml->xpath("/coverage/project/metrics");
+            if (!$metrics || !isset($metrics[0])) {
+              fwrite(STDERR, "Unable to find project metrics in Clover XML\n");
+              exit(1);
+            }
+            $m = $metrics[0];
+            $totalStatements = (int) $m["statements"];
+            $coveredStatements = (int) $m["coveredstatements"];
+            $totalMethods = (int) $m["methods"];
+            $coveredMethods = (int) $m["coveredmethods"];
+            $lineCoverage = $totalStatements > 0 ? round(($coveredStatements / $totalStatements) * 100, 2) : 0.0;
+            $methodCoverage = $totalMethods > 0 ? round(($coveredMethods / $totalMethods) * 100, 2) : 0.0;
+            $output = getenv("GITHUB_OUTPUT");
+            file_put_contents($output, "line_coverage={$lineCoverage}\n", FILE_APPEND);
+            file_put_contents($output, "method_coverage={$methodCoverage}\n", FILE_APPEND);
+            file_put_contents($output, "covered_lines={$coveredStatements}\n", FILE_APPEND);
+            file_put_contents($output, "total_lines={$totalStatements}\n", FILE_APPEND);
+            file_put_contents($output, "covered_methods={$coveredMethods}\n", FILE_APPEND);
+            file_put_contents($output, "total_methods={$totalMethods}\n", FILE_APPEND);
+          '
+
+      - name: Write job summary
+        run: |
+          {
+            echo "## PHPUnit Coverage";
+            echo "";
+            echo "| Metric | Value |";
+            echo "| --- | ---: |";
+            echo "| Line coverage | ${{ steps.coverage.outputs.line_coverage }}% |";
+            echo "| Covered lines | ${{ steps.coverage.outputs.covered_lines }} / ${{ steps.coverage.outputs.total_lines }} |";
+            echo "| Method coverage | ${{ steps.coverage.outputs.method_coverage }}% |";
+            echo "| Covered methods | ${{ steps.coverage.outputs.covered_methods }} / ${{ steps.coverage.outputs.total_methods }} |";
+            echo "";
+            echo "HTML report is available in the \`coverage-html-report\` artifact.";
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upsert PR coverage comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = "<!-- coverage-report-comment -->";
+            const body = `${marker}
+            ## PHPUnit Coverage
+
+            | Metric | Value |
+            | --- | ---: |
+            | Line coverage | ${{ steps.coverage.outputs.line_coverage }}% |
+            | Covered lines | ${{ steps.coverage.outputs.covered_lines }} / ${{ steps.coverage.outputs.total_lines }} |
+            | Method coverage | ${{ steps.coverage.outputs.method_coverage }}% |
+            | Covered methods | ${{ steps.coverage.outputs.covered_methods }} / ${{ steps.coverage.outputs.total_methods }} |
+
+            HTML report is available in the \`coverage-html-report\` artifact from this workflow run.`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100
+            });
+            const existing = comments.find((comment) =>
+              comment.user?.type === "Bot" && comment.body?.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body
+              });
+            }
+
+      - name: Upload HTML coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-report
+          path: build/coverage
+          retention-days: 7
