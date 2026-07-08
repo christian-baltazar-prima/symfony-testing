@@ -60,11 +60,11 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down --volumes --remove-orphans
 
-      - name: Parse coverage metrics
-        id: coverage
-        shell: bash
-        run: |
-          php .github/scripts/coverage-compare.php total build/logs/clover.xml >> $GITHUB_OUTPUT
+#      - name: Parse coverage metrics
+#        id: coverage
+#        shell: bash
+#        run: |
+#          php .github/scripts/coverage-compare.php total build/logs/clover.xml >> $GITHUB_OUTPUT
 
       - name: Parse changed-code coverage
         id: coverage_changed
