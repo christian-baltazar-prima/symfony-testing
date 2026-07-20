@@ -60,11 +60,11 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down --volumes --remove-orphans
 
-#      - name: Parse coverage metrics
-#        id: coverage
-#        shell: bash
-#        run: |
-#          php .github/scripts/coverage-compare.php total build/logs/clover.xml >> $GITHUB_OUTPUT
+      - name: Parse coverage metrics
+        id: coverage
+        shell: bash
+        run: |
+          php .github/scripts/coverage-compare.php total build/logs/clover.xml >> $GITHUB_OUTPUT
 
       - name: Parse changed-code coverage
         id: coverage_changed
@@ -75,8 +75,25 @@ jobs:
             php .github/scripts/coverage-compare.php changed build/logs/clover.xml "origin/${{ steps.base_ref.outputs.base_ref }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Parse changed-code lowest files
+        id: coverage_changed_top10
+        shell: bash
+        continue-on-error: true
+        run: |
+          if [ -f build/logs/clover.xml ]; then
+            TABLE="$(php .github/scripts/coverage-compare.php changed-top10 build/logs/clover.xml "origin/${{ steps.base_ref.outputs.base_ref }}" 10)"
+          else
+            TABLE="No changed files with coverage metrics"
+          fi
+          {
+            echo "table<<EOF"
+            echo "$TABLE"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Write job summary
         run: |
+          TOP10_TABLE="${{ steps.coverage_changed_top10.outputs.table }}"
           {
             echo "## PHPUnit Coverage";
             echo "";
@@ -86,6 +103,19 @@ jobs:
             echo "| Covered lines | ${{ steps.coverage.outputs.covered_lines }} / ${{ steps.coverage.outputs.total_lines }} |";
             echo "| Method coverage | ${{ steps.coverage.outputs.method_coverage }}% |";
             echo "| Covered methods | ${{ steps.coverage.outputs.covered_methods }} / ${{ steps.coverage.outputs.total_methods }} |";
+            echo "";
+            echo "### Coverage for Changed Code";
+            echo "";
+            echo "| Metric | Value |";
+            echo "| --- | ---: |";
+            echo "| Line coverage | ${{ steps.coverage_changed.outputs.line_coverage }}% |";
+            echo "| Covered lines | ${{ steps.coverage_changed.outputs.covered_lines }} / ${{ steps.coverage_changed.outputs.total_lines }} |";
+            echo "| Method coverage | ${{ steps.coverage_changed.outputs.method_coverage }}% |";
+            echo "| Covered methods | ${{ steps.coverage_changed.outputs.covered_methods }} / ${{ steps.coverage_changed.outputs.total_methods }} |";
+            echo "";
+            echo "#### Lowest coverage files (Top 10)";
+            echo "";
+            echo "$TOP10_TABLE";
             echo "";
             echo "HTML report is available in the \`coverage-html-report\` artifact.";
           } >> "$GITHUB_STEP_SUMMARY"
@@ -111,6 +141,7 @@ jobs:
 
             const changedLineCoverage = '${{ steps.coverage_changed.outputs.line_coverage }}';
             if (changedLineCoverage && changedLineCoverage !== '' && !changedLineCoverage.includes('undefined')) {
+              const top10Table = `${{ steps.coverage_changed_top10.outputs.table }}`;
               const changedCoverageLines = [
                 "### Coverage for Changed Code",
                 "",
@@ -119,7 +150,11 @@ jobs:
                 "| Line coverage | ${{ steps.coverage_changed.outputs.line_coverage }}% |",
                 "| Covered lines | ${{ steps.coverage_changed.outputs.covered_lines }} / ${{ steps.coverage_changed.outputs.total_lines }} |",
                 "| Method coverage | ${{ steps.coverage_changed.outputs.method_coverage }}% |",
-                "| Covered methods | ${{ steps.coverage_changed.outputs.covered_methods }} / ${{ steps.coverage_changed.outputs.total_methods }} |"
+                "| Covered methods | ${{ steps.coverage_changed.outputs.covered_methods }} / ${{ steps.coverage_changed.outputs.total_methods }} |",
+                "",
+                "#### Lowest coverage files (Top 10)",
+                "",
+                top10Table
               ];
               sections.push(changedCoverageLines.join("\n"));
             }

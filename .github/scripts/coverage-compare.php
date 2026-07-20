@@ -82,6 +82,47 @@ class CoverageAnalyzer {
         ];
     }
 
+    public function getTopFilesByCoverage(array $filenames, int $limit = 10): array {
+        $rows = [];
+
+        foreach (array_unique($filenames) as $filename) {
+            $file = $this->findFileMetrics($filename);
+            if ($file === null) {
+                continue;
+            }
+
+            $totalLines = (int) $file['statements'];
+            $coveredLines = (int) $file['coveredstatements'];
+            $totalMethods = (int) $file['methods'];
+            $coveredMethods = (int) $file['coveredmethods'];
+
+            $lineCoverage = $totalLines > 0 ? round(($coveredLines / $totalLines) * 100, 2) : 0.0;
+            $methodCoverage = $totalMethods > 0 ? round(($coveredMethods / $totalMethods) * 100, 2) : 0.0;
+
+            $rows[] = [
+                'file' => $filename,
+                'line_coverage' => $lineCoverage,
+                'covered_lines' => $coveredLines,
+                'total_lines' => $totalLines,
+                'method_coverage' => $methodCoverage,
+                'covered_methods' => $coveredMethods,
+                'total_methods' => $totalMethods,
+            ];
+        }
+
+        usort($rows, static function (array $a, array $b): int {
+            if ($a['line_coverage'] !== $b['line_coverage']) {
+                return $a['line_coverage'] <=> $b['line_coverage'];
+            }
+            if ($a['method_coverage'] !== $b['method_coverage']) {
+                return $a['method_coverage'] <=> $b['method_coverage'];
+            }
+            return strcmp($a['file'], $b['file']);
+        });
+
+        return array_slice($rows, 0, max(0, $limit));
+    }
+
     private function findFileMetrics(string $filename): ?array {
         if (isset($this->files[$filename])) {
             return $this->files[$filename];
@@ -126,6 +167,7 @@ try {
     match ($command) {
         'total' => handleTotal($argv),
         'changed' => handleChanged($argv),
+        'changed-top10' => handleChangedTop10($argv),
         null => fwrite(STDERR, "Usage: php coverage-compare.php <command> [args]\n"),
         default => fwrite(STDERR, "Unknown command: $command\n"),
     };
@@ -150,6 +192,30 @@ function handleTotal(array $argv): void {
 function handleChanged(array $argv): void {
     if (!isset($argv[2]) || !isset($argv[3])) {
         throw new Exception("Usage: php coverage-compare.php changed <clover-xml> <base-branch>");
+    }
+
+    function handleChangedTop10(array $argv): void {
+        if (!isset($argv[2]) || !isset($argv[3])) {
+            throw new Exception("Usage: php coverage-compare.php changed-top10 <clover-xml> <base-branch> [limit]");
+        }
+
+        $analyzer = new CoverageAnalyzer($argv[2]);
+        $baseBranch = $argv[3];
+        $limit = isset($argv[4]) ? max(1, (int) $argv[4]) : 10;
+        $changedFiles = CoverageAnalyzer::getChangedFiles($baseBranch);
+
+        $rows = $analyzer->getTopFilesByCoverage($changedFiles, $limit);
+        if (empty($rows)) {
+            echo "No changed files with coverage metrics\n";
+            return;
+        }
+
+        echo "| File | Line % | Lines | Method % | Methods |\n";
+        echo "| --- | ---: | ---: | ---: | ---: |\n";
+        foreach ($rows as $row) {
+            $file = str_replace('|', '\\|', $row['file']);
+            echo "| {$file} | {$row['line_coverage']}% | {$row['covered_lines']}/{$row['total_lines']} | {$row['method_coverage']}% | {$row['covered_methods']}/{$row['total_methods']} |\n";
+        }
     }
     
     $analyzer = new CoverageAnalyzer($argv[2]);
