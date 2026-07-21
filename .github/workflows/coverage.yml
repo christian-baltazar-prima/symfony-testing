@@ -81,7 +81,7 @@ jobs:
         continue-on-error: true
         run: |
           if [ -f build/logs/clover.xml ]; then
-            TABLE="$(php .github/scripts/coverage-compare.php changed-top10 build/logs/clover.xml "origin/${{ steps.base_ref.outputs.base_ref }}" 10)"
+            TABLE="$(php .github/scripts/coverage-compare.php top10 build/logs/clover.xml "origin/${{ steps.base_ref.outputs.base_ref }}" 10)"
           else
             TABLE="No changed files with coverage metrics"
           fi

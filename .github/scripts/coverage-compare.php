@@ -167,7 +167,7 @@ try {
     match ($command) {
         'total' => handleTotal($argv),
         'changed' => handleChanged($argv),
-        'changed-top10' => handleChangedTop10($argv),
+        'top10' => handleChangedTop10($argv),
         null => fwrite(STDERR, "Usage: php coverage-compare.php <command> [args]\n"),
         default => fwrite(STDERR, "Unknown command: $command\n"),
     };
@@ -193,30 +193,6 @@ function handleChanged(array $argv): void {
     if (!isset($argv[2]) || !isset($argv[3])) {
         throw new Exception("Usage: php coverage-compare.php changed <clover-xml> <base-branch>");
     }
-
-    function handleChangedTop10(array $argv): void {
-        if (!isset($argv[2]) || !isset($argv[3])) {
-            throw new Exception("Usage: php coverage-compare.php changed-top10 <clover-xml> <base-branch> [limit]");
-        }
-
-        $analyzer = new CoverageAnalyzer($argv[2]);
-        $baseBranch = $argv[3];
-        $limit = isset($argv[4]) ? max(1, (int) $argv[4]) : 10;
-        $changedFiles = CoverageAnalyzer::getChangedFiles($baseBranch);
-
-        $rows = $analyzer->getTopFilesByCoverage($changedFiles, $limit);
-        if (empty($rows)) {
-            echo "No changed files with coverage metrics\n";
-            return;
-        }
-
-        echo "| File | Line % | Lines | Method % | Methods |\n";
-        echo "| --- | ---: | ---: | ---: | ---: |\n";
-        foreach ($rows as $row) {
-            $file = str_replace('|', '\\|', $row['file']);
-            echo "| {$file} | {$row['line_coverage']}% | {$row['covered_lines']}/{$row['total_lines']} | {$row['method_coverage']}% | {$row['covered_methods']}/{$row['total_methods']} |\n";
-        }
-    }
     
     $analyzer = new CoverageAnalyzer($argv[2]);
     $baseBranch = $argv[3];
@@ -236,5 +212,30 @@ function handleChanged(array $argv): void {
     
     foreach ($metrics as $key => $value) {
         echo "$key=$value\n";
+    }
+}
+
+function handleChangedTop10(array $argv): void
+{
+    if (!isset($argv[2]) || !isset($argv[3])) {
+        throw new Exception('Usage: php coverage-compare.php changed-top10 <clover-xml> <base-branch> [limit]');
+    }
+
+    $analyzer = new CoverageAnalyzer($argv[2]);
+    $baseBranch = $argv[3];
+    $limit = isset($argv[4]) ? max(1, (int) $argv[4]) : 10;
+    $changedFiles = CoverageAnalyzer::getChangedFiles($baseBranch);
+
+    $rows = $analyzer->getTopFilesByCoverage($changedFiles, $limit);
+    if (empty($rows)) {
+        echo "No changed files with coverage metrics\n";
+        return;
+    }
+
+    echo "| File | Line % | Lines | Method % | Methods |\n";
+    echo "| --- | ---: | ---: | ---: | ---: |\n";
+    foreach ($rows as $row) {
+        $file = str_replace('|', '\\|', $row['file']);
+        echo "| {$file} | {$row['line_coverage']}% | {$row['covered_lines']}/{$row['total_lines']} | {$row['method_coverage']}% | {$row['covered_methods']}/{$row['total_methods']} |\n";
     }
 }
